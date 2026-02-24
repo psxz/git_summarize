@@ -98,9 +98,7 @@ class Settings(BaseSettings):
     )
 
     # ── Observability ─────────────────────────────────────────────────────
-    langchain_tracing_v2: str | None = None
-    langchain_api_key: str | None = None
-    langchain_project: str = "github-summarizer"
+
     log_level: str = "INFO"
 
     # Arize Phoenix (self-hosted LLM observability)

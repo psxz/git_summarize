@@ -38,15 +38,6 @@ async def lifespan(app: FastAPI):
     configure_logging()
     settings = get_settings()
 
-    # Enable LangSmith tracing if configured
-    if settings.langchain_api_key and settings.langchain_tracing_v2 == "true":
-        import os
-
-        os.environ["LANGCHAIN_TRACING_V2"] = "true"
-        os.environ["LANGCHAIN_API_KEY"] = settings.langchain_api_key
-        os.environ["LANGCHAIN_PROJECT"] = settings.langchain_project
-        logger.info("langsmith_tracing_enabled", project=settings.langchain_project)
-
     # Enable Arize Phoenix tracing if configured
     from app.core.observability import init_observability, shutdown_observability
 
