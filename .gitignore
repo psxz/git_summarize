@@ -46,8 +46,7 @@ htmlcov/
 mnt/user-data/
 
 # ── API testing artifacts ─────────────────────────────────────
-scripts/_req.json
-scripts/_*.json
+scripts/_*
 *_summary.json
 
 # ── Misc ──────────────────────────────────────────────────────

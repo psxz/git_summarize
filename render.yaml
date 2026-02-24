@@ -44,15 +44,15 @@ services:
       - key: LLM_TEMPERATURE
         value: "0.2"
       - key: LLM_MAX_TOKENS
-        value: "2048"
+        value: "4096"
 
       # ── Summarization ──────────────────────────────────────
       - key: SUMMARIZATION_STRATEGY
         value: map_reduce
       - key: CHUNK_SIZE_TOKENS
-        value: "1500"
+        value: "2500"
       - key: CHUNK_OVERLAP_TOKENS
-        value: "150"
+        value: "200"
 
       # ── Cache (auto-wired from Redis service below) ─────────
       - key: REDIS_URL
@@ -94,11 +94,11 @@ services:
 
       # ── Runtime Limits ──────────────────────────────────────
       - key: MAX_FILES_TO_SCAN
-        value: "20"
+        value: "30"
       - key: MAX_FILE_SIZE_BYTES
         value: "102400"
       - key: MAX_TOTAL_TOKENS
-        value: "80000"
+        value: "120000"
 
   # ── Redis Cache ───────────────────────────────────────────────────────
   - type: redis

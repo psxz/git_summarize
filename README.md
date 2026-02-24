@@ -20,7 +20,9 @@ cd git_summarize
 # Create .env from the template
 cp .env.example .env
 # Edit .env — you need at minimum:
-#   GITHUB_TOKEN   - a GitHub personal access token
+#   GITHUB_TOKEN   - a GitHub personal access token (optional for public repos,
+#                    but required in practice — unauthenticated API is capped at
+#                    60 requests/hour, which a single large repo can exhaust)
 #   NEBIUS_API_KEY - from https://studio.nebius.com/settings/api-keys
 
 # Install everything and start the server
@@ -62,8 +64,8 @@ This was the interesting part to get right. The pipeline:
 1. **Token counting** with tiktoken before any LLM call
 2. **Markdown-aware chunking** — recursive splitter that respects heading boundaries
 3. For code files, **ChunkHound's cAST algorithm** — tree-sitter based, respects function/class boundaries
-4. **Hard budget cap** — `MAX_TOTAL_TOKENS` (80K default) prevents runaway costs
-5. **File count limit** — max 20 files by default, docs prioritized over code
+4. **Hard budget cap** — `MAX_TOTAL_TOKENS` (120K default) prevents runaway costs
+5. **File count limit** — max 30 files by default, docs prioritized over code
 
 The Map-Reduce strategy summarizes each chunk independently (parallelized),
 then combines partial summaries in a final "reduce" pass. There's also an
@@ -73,7 +75,7 @@ running summary chunk-by-chunk — trades parallelism for coherence.
 ## Environment variables
 | Variable | Required | Description |
 |---|---|---|
-| `GITHUB_TOKEN` | Yes | GitHub PAT for API access |
+| `GITHUB_TOKEN` | Recommended | GitHub PAT — technically optional for public repos, but unauthenticated API caps at 60 req/hr (one large repo can exhaust this) |
 | `NEBIUS_API_KEY` | Yes* | Nebius AI Studio key (*or set another provider's key) |
 | `OPENAI_API_KEY` | No | If using `DEFAULT_LLM_PROVIDER=openai` |
 | `ANTHROPIC_API_KEY` | No | If using `DEFAULT_LLM_PROVIDER=anthropic` |
