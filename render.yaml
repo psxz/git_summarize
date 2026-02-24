@@ -10,6 +10,8 @@ services:
   - type: web
     name: github-summarizer-api
     runtime: python
+    branch: master
+    autoDeploy: true
     # uv reads .python-version automatically — pins to 3.12
     buildCommand: |
       pip install uv --quiet
