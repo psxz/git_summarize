@@ -31,9 +31,8 @@ read response.additional_kwargs["reasoning_details"].
 
 The factory is intentionally thin — prompt engineering lives in summarizer.py.
 """
-from __future__ import annotations
 
-from typing import Optional
+from __future__ import annotations
 
 from langchain_core.language_models import BaseChatModel
 
@@ -45,16 +44,16 @@ logger = get_logger(__name__)
 # Default model for each provider — overridden by DEFAULT_LLM_MODEL env var
 # or by the per-request llm_model field in SummarizeRequest.
 _PROVIDER_DEFAULTS: dict[LLMProvider, str] = {
-    LLMProvider.OPENAI:    "gpt-4o-mini",
+    LLMProvider.OPENAI: "gpt-4o-mini",
     LLMProvider.ANTHROPIC: "claude-3-5-haiku-20241022",
-    LLMProvider.GOOGLE:    "gemini-1.5-flash",
-    LLMProvider.NEBIUS:    "MiniMaxAI/MiniMax-M2.1",
+    LLMProvider.GOOGLE: "gemini-1.5-flash",
+    LLMProvider.NEBIUS: "MiniMaxAI/MiniMax-M2.1",
 }
 
 
 def get_llm(
-    provider: Optional[str] = None,
-    model: Optional[str] = None,
+    provider: str | None = None,
+    model: str | None = None,
 ) -> BaseChatModel:
     """
     Return an instantiated LangChain chat model.
@@ -101,6 +100,7 @@ def get_llm(
         if not settings.openai_api_key:
             raise ValueError("OPENAI_API_KEY is not set.")
         from langchain_openai import ChatOpenAI
+
         return ChatOpenAI(
             model=chosen_model,
             temperature=temperature,
@@ -114,6 +114,7 @@ def get_llm(
         if not settings.anthropic_api_key:
             raise ValueError("ANTHROPIC_API_KEY is not set.")
         from langchain_anthropic import ChatAnthropic
+
         return ChatAnthropic(
             model=chosen_model,
             temperature=temperature,
@@ -127,6 +128,7 @@ def get_llm(
         if not settings.google_api_key:
             raise ValueError("GOOGLE_API_KEY is not set.")
         from langchain_google_genai import ChatGoogleGenerativeAI
+
         return ChatGoogleGenerativeAI(
             model=chosen_model,
             temperature=temperature,
@@ -154,6 +156,7 @@ def get_llm(
                 "Generate one at https://studio.nebius.com/settings/api-keys"
             )
         from langchain_openai import ChatOpenAI
+
         return ChatOpenAI(
             model=chosen_model,
             temperature=temperature,
@@ -166,7 +169,7 @@ def get_llm(
             # StrOutputParser in the summarizer strips them before LLM scoring.
             model_kwargs={
                 "extra_headers": {
-                    "X-Nebius-Model": chosen_model,   # aids Nebius routing logs
+                    "X-Nebius-Model": chosen_model,  # aids Nebius routing logs
                 }
             },
         )

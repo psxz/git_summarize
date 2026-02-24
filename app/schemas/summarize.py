@@ -4,15 +4,15 @@ app/schemas/summarize.py
 Pydantic v2 request and response schemas.
 These power both FastAPI validation and the auto-generated Swagger/ReDoc docs.
 """
+
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Optional
 
-from pydantic import BaseModel, Field, HttpUrl, field_validator
-
+from pydantic import BaseModel, Field, field_validator
 
 # ── Request ───────────────────────────────────────────────────────────────────
+
 
 class LLMProviderChoice(str, Enum):
     OPENAI = "openai"
@@ -38,15 +38,15 @@ class SummarizeRequest(BaseModel):
         ),
         examples=["https://github.com/tiangolo/fastapi"],
     )
-    llm_provider: Optional[LLMProviderChoice] = Field(
+    llm_provider: LLMProviderChoice | None = Field(
         None,
         description="Override the default LLM provider for this request.",
     )
-    llm_model: Optional[str] = Field(
+    llm_model: str | None = Field(
         None,
         description="Override the model name (e.g. 'gpt-4o', 'claude-3-5-sonnet-20241022').",
     )
-    strategy: Optional[SummarizationStrategyChoice] = Field(
+    strategy: SummarizationStrategyChoice | None = Field(
         None,
         description="Summarization strategy. Defaults to service config value.",
     )
@@ -54,7 +54,7 @@ class SummarizeRequest(BaseModel):
         False,
         description="Include a condensed file-tree section in the summary.",
     )
-    max_files: Optional[int] = Field(
+    max_files: int | None = Field(
         None,
         ge=1,
         le=50,
@@ -74,31 +74,31 @@ class SummarizeRequest(BaseModel):
         ]
         if not any(re.match(p, v) for p in patterns):
             raise ValueError(
-                "repo_url must be a valid GitHub URL, e.g. "
-                "https://github.com/owner/repo"
+                "repo_url must be a valid GitHub URL, e.g. https://github.com/owner/repo"
             )
         return v
 
 
 # ── Sub-models ────────────────────────────────────────────────────────────────
 
+
 class RepoMetadata(BaseModel):
     owner: str
     name: str
     full_name: str
-    description: Optional[str] = None
+    description: str | None = None
     stars: int = 0
     forks: int = 0
     open_issues: int = 0
     topics: list[str] = []
     default_branch: str = "main"
-    language: Optional[str] = None
+    language: str | None = None
     languages: dict[str, int] = {}
     is_archived: bool = False
-    license_name: Optional[str] = None
-    homepage: Optional[str] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    license_name: str | None = None
+    homepage: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
 
 class SummarizationMeta(BaseModel):
@@ -113,6 +113,7 @@ class SummarizationMeta(BaseModel):
 
 # ── Response ──────────────────────────────────────────────────────────────────
 
+
 class SummarizeResponse(BaseModel):
     """Full summarization response returned by POST /summarize."""
 
@@ -126,7 +127,7 @@ class SummarizeResponse(BaseModel):
         default_factory=list,
         description="Detected primary technologies and frameworks.",
     )
-    file_tree_snippet: Optional[str] = Field(
+    file_tree_snippet: str | None = Field(
         None,
         description="Condensed file tree (only if include_file_tree=true).",
     )
@@ -138,6 +139,7 @@ class SummarizeResponse(BaseModel):
 
 
 # ── Health ────────────────────────────────────────────────────────────────────
+
 
 class HealthResponse(BaseModel):
     status: str = "ok"

@@ -11,10 +11,12 @@ Orchestrates the full summarization pipeline:
 Both sync (for JSON endpoint) and async-generator (for SSE streaming)
 variants are provided.
 """
+
 from __future__ import annotations
 
 import asyncio
-from typing import Any, AsyncIterator, Optional
+from collections.abc import AsyncIterator
+from typing import Any
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -73,8 +75,7 @@ _REDUCE_PROMPT = (
 )
 
 _REFINE_INIT_PROMPT = (
-    "Summarise the following repository documentation section:\n\n"
-    "---\n{chunk}\n---"
+    "Summarise the following repository documentation section:\n\n---\n{chunk}\n---"
 )
 
 _REFINE_STEP_PROMPT = (
@@ -93,6 +94,7 @@ _EXTRACT_TECHNOLOGIES_PROMPT = (
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 async def _llm_call(llm: BaseChatModel, user_prompt: str) -> str:
     """Single async LLM call returning stripped string output."""
@@ -136,7 +138,6 @@ async def _gather_content(
         root_entries: Raw GitHub directory listing for file-tree rendering.
         warnings:   Non-fatal issues encountered during fetching.
     """
-    settings = get_settings()
     warnings: list[str] = []
 
     # Parallel fetch: README + directory listing
@@ -156,12 +157,18 @@ async def _gather_content(
     _CONFIG_EXTENSIONS = {".toml", ".yaml", ".yml"}
     # Priority filenames always fetched regardless of extension
     _PRIORITY_DOC_FILES = {
-        "CONTRIBUTING.md", "ARCHITECTURE.md", "CHANGELOG.md",
-        "go.mod", "Dockerfile",
+        "CONTRIBUTING.md",
+        "ARCHITECTURE.md",
+        "CHANGELOG.md",
+        "go.mod",
+        "Dockerfile",
     }
     _PRIORITY_CONFIG_FILES = {
-        "pyproject.toml", "package.json", "Cargo.toml",
-        "docker-compose.yml", "docker-compose.yaml",
+        "pyproject.toml",
+        "package.json",
+        "Cargo.toml",
+        "docker-compose.yml",
+        "docker-compose.yaml",
     }
 
     doc_candidates: list[dict] = []
@@ -174,9 +181,12 @@ async def _gather_content(
         if name == "README.md":
             continue  # already fetched above
 
-        if name in _PRIORITY_DOC_FILES or any(name.endswith(e) for e in _DOC_EXTENSIONS):
-            doc_candidates.append(entry)
-        elif name in _PRIORITY_CONFIG_FILES or any(name.endswith(e) for e in _CONFIG_EXTENSIONS):
+        if (
+            name in _PRIORITY_DOC_FILES
+            or any(name.endswith(e) for e in _DOC_EXTENSIONS)
+            or name in _PRIORITY_CONFIG_FILES
+            or any(name.endswith(e) for e in _CONFIG_EXTENSIONS)
+        ):
             doc_candidates.append(entry)
         elif is_code_file(name):
             code_candidates.append(entry)
@@ -212,6 +222,7 @@ async def _gather_content(
 
 # ── Main summarization strategies ─────────────────────────────────────────────
 
+
 async def _map_reduce_summarize(
     llm: BaseChatModel,
     chunks: list[str],
@@ -224,16 +235,11 @@ async def _map_reduce_summarize(
     logger.info("map_reduce_start", num_chunks=len(chunks))
 
     # MAP — parallel LLM calls
-    map_tasks = [
-        _llm_call(llm, _MAP_PROMPT.format(chunk=chunk))
-        for chunk in chunks
-    ]
+    map_tasks = [_llm_call(llm, _MAP_PROMPT.format(chunk=chunk)) for chunk in chunks]
     partial_summaries: list[str] = await asyncio.gather(*map_tasks)
 
     # REDUCE
-    combined = "\n\n---\n\n".join(
-        f"Section {i+1}:\n{s}" for i, s in enumerate(partial_summaries)
-    )
+    combined = "\n\n---\n\n".join(f"Section {i + 1}:\n{s}" for i, s in enumerate(partial_summaries))
     final = await _llm_call(
         llm,
         _REDUCE_PROMPT.format(combined=combined, metadata=metadata_str),
@@ -287,7 +293,10 @@ async def _extract_technologies(llm: BaseChatModel, summary: str) -> list[str]:
 
 # ── Public entry point ────────────────────────────────────────────────────────
 
-async def summarize_repo(request: SummarizeRequest, github_token: str | None = None) -> SummarizeResponse:
+
+async def summarize_repo(
+    request: SummarizeRequest, github_token: str | None = None
+) -> SummarizeResponse:
     """
     Full summarization pipeline. Returns a structured SummarizeResponse.
     Called by the JSON (non-streaming) endpoint.
@@ -337,9 +346,7 @@ async def summarize_repo(request: SummarizeRequest, github_token: str | None = N
     # --- Code chunks (cAST) ---
     code_chunks: list[str] = []
     for fname, code_content in code_files:
-        code_chunks.extend(
-            chunk_code_with_cast(code_content, fname, max_tokens=chunk_size)
-        )
+        code_chunks.extend(chunk_code_with_cast(code_content, fname, max_tokens=chunk_size))
 
     # Combine: docs first (high-level context), then code (implementation detail)
     chunks = doc_chunks + code_chunks
@@ -442,7 +449,10 @@ async def summarize_repo(request: SummarizeRequest, github_token: str | None = N
 
 # ── Streaming variant ─────────────────────────────────────────────────────────
 
-async def summarize_repo_stream(request: SummarizeRequest, github_token: str | None = None) -> AsyncIterator[str]:
+
+async def summarize_repo_stream(
+    request: SummarizeRequest, github_token: str | None = None
+) -> AsyncIterator[str]:
     """
     Streaming summarization using Server-Sent Events.
     Yields JSON-serialisable event strings.
@@ -494,9 +504,7 @@ async def summarize_repo_stream(request: SummarizeRequest, github_token: str | N
         # Code files — ChunkHound cAST (AST-aware, per-file)
         code_chunks: list[str] = []
         for fname, code_content in code_files:
-            code_chunks.extend(
-                chunk_code_with_cast(code_content, fname, max_tokens=chunk_size)
-            )
+            code_chunks.extend(chunk_code_with_cast(code_content, fname, max_tokens=chunk_size))
 
         chunks = doc_chunks + code_chunks
 
@@ -528,16 +536,12 @@ async def summarize_repo_stream(request: SummarizeRequest, github_token: str | N
         # Stream the reduce/final step token by token
         if strategy == SummarizationStrategy.MAP_REDUCE:
             # Map phase (parallel, not streamed)
-            map_tasks = [
-                _llm_call(llm, _MAP_PROMPT.format(chunk=c)) for c in chunks
-            ]
+            map_tasks = [_llm_call(llm, _MAP_PROMPT.format(chunk=c)) for c in chunks]
             partial_summaries = await asyncio.gather(*map_tasks)
             combined = "\n\n---\n\n".join(
-                f"Section {i+1}:\n{s}" for i, s in enumerate(partial_summaries)
+                f"Section {i + 1}:\n{s}" for i, s in enumerate(partial_summaries)
             )
-            reduce_prompt = _REDUCE_PROMPT.format(
-                combined=combined, metadata=metadata_str
-            )
+            reduce_prompt = _REDUCE_PROMPT.format(combined=combined, metadata=metadata_str)
             messages = [
                 SystemMessage(content=_SYSTEM_PROMPT),
                 HumanMessage(content=reduce_prompt),
@@ -551,16 +555,12 @@ async def summarize_repo_stream(request: SummarizeRequest, github_token: str | N
             summary = "".join(summary_tokens)
 
         else:  # REFINE
-            summary = await _llm_call(
-                llm, _REFINE_INIT_PROMPT.format(chunk=chunks[0])
-            )
+            summary = await _llm_call(llm, _REFINE_INIT_PROMPT.format(chunk=chunks[0]))
             yield _event("chunk", summary)
 
             for i, chunk in enumerate(chunks[1:], start=2):
                 yield _event("status", f"Refining with section {i}/{len(chunks)}…")
-                refine_prompt = _REFINE_STEP_PROMPT.format(
-                    existing_summary=summary, chunk=chunk
-                )
+                refine_prompt = _REFINE_STEP_PROMPT.format(existing_summary=summary, chunk=chunk)
                 messages = [
                     SystemMessage(content=_SYSTEM_PROMPT),
                     HumanMessage(content=refine_prompt),

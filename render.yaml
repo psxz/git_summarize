@@ -10,6 +10,8 @@ services:
   - type: web
     name: github-summarizer-api
     runtime: python
+    branch: master
+    autoDeploy: true
     # uv reads .python-version automatically — pins to 3.12
     buildCommand: |
       pip install uv --quiet
@@ -103,6 +105,7 @@ services:
     name: github-summarizer-redis
     plan: starter
     maxmemoryPolicy: allkeys-lru
+    ipAllowList: []  # empty = only Render internal network can connect
 
   # ── Phoenix (LLM Observability) ───────────────────────────────────────
   # Runs as a private service — only reachable from within the Render

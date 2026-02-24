@@ -32,14 +32,13 @@ Public API
   clear_request_context()       Clears per-request context (end of request).
   get_uvicorn_log_config()      Returns a logging.config dict for Uvicorn.
 """
+
 from __future__ import annotations
 
 import logging
 import logging.config
 import os
 import sys
-import time
-from collections.abc import MutableMapping
 from typing import Any
 
 import structlog
@@ -48,6 +47,7 @@ from structlog.types import EventDict, WrappedLogger
 from app.core.config import get_settings
 
 # ── Environment detection ─────────────────────────────────────────────────────
+
 
 def _is_production() -> bool:
     """
@@ -65,34 +65,36 @@ def _is_production() -> bool:
 # Quiet down chatty third-party libraries without touching our own loggers.
 
 _THIRD_PARTY_LEVELS: dict[str, int] = {
-    "httpx":                    logging.WARNING,
-    "httpcore":                 logging.WARNING,
-    "hpack":                    logging.WARNING,
-    "openai":                   logging.WARNING,
-    "anthropic":                logging.WARNING,
-    "langchain":                logging.WARNING,
-    "langchain_core":           logging.WARNING,
-    "langchain_openai":         logging.WARNING,
-    "langchain_anthropic":      logging.WARNING,
-    "langchain_google_genai":   logging.WARNING,
-    "redis":                    logging.WARNING,
-    "duckdb":                   logging.WARNING,
-    "urllib3":                  logging.WARNING,
-    "charset_normalizer":       logging.WARNING,
+    "httpx": logging.WARNING,
+    "httpcore": logging.WARNING,
+    "hpack": logging.WARNING,
+    "openai": logging.WARNING,
+    "anthropic": logging.WARNING,
+    "langchain": logging.WARNING,
+    "langchain_core": logging.WARNING,
+    "langchain_openai": logging.WARNING,
+    "langchain_anthropic": logging.WARNING,
+    "langchain_google_genai": logging.WARNING,
+    "redis": logging.WARNING,
+    "duckdb": logging.WARNING,
+    "urllib3": logging.WARNING,
+    "charset_normalizer": logging.WARNING,
     # Uvicorn access log is handled by _HealthCheckFilter below;
     # the error/warning log stays at WARNING.
-    "uvicorn.error":            logging.WARNING,
-    "uvicorn.access":           logging.INFO,    # filtered, not silenced
+    "uvicorn.error": logging.WARNING,
+    "uvicorn.access": logging.INFO,  # filtered, not silenced
 }
 
 
 # ── Custom processors ─────────────────────────────────────────────────────────
+
 
 class _AddServiceContext:
     """
     Injects static service-level fields into every log record.
     Reads from config once and caches — safe for long-lived processes.
     """
+
     _fields: dict[str, Any] | None = None
 
     def __call__(self, logger: WrappedLogger, method: str, event_dict: EventDict) -> EventDict:
@@ -116,6 +118,7 @@ class _SuppressHealthChecks:
     High-frequency polling (load balancers, Render's health probe) would
     otherwise flood the log stream with zero-value noise.
     """
+
     _SUPPRESSED_PATHS = {"/api/v1/health", "/health", "/"}
 
     def __call__(self, logger: WrappedLogger, method: str, event_dict: EventDict) -> EventDict:
@@ -133,11 +136,12 @@ class _SamplingFilter:
     Sampled events still appear — they're just thinned.
     100 % of ERROR and WARNING records always pass through.
     """
+
     _HIGH_VOLUME = {
-        "cache_hit_redis":   10,   # log 1 in 10
-        "cache_hit_memory":  10,
-        "cast_chunked":       5,
-        "refine_step":        3,
+        "cache_hit_redis": 10,  # log 1 in 10
+        "cache_hit_memory": 10,
+        "cast_chunked": 5,
+        "refine_step": 3,
     }
     _counters: dict[str, int] = {}
 
@@ -165,9 +169,9 @@ class _CallsiteInfo:
     Adds { module, func_name, lineno } to every record in dev mode.
     Skipped in production to save bytes.
     """
+
     def __call__(self, logger: WrappedLogger, method: str, event_dict: EventDict) -> EventDict:
-        import traceback
-        frame = sys._getframe(6)   # walk past structlog internals
+        frame = sys._getframe(6)  # walk past structlog internals
         event_dict["module"] = frame.f_globals.get("__name__", "unknown")
         event_dict["func_name"] = frame.f_code.co_name
         event_dict["lineno"] = frame.f_lineno
@@ -175,6 +179,7 @@ class _CallsiteInfo:
 
 
 # ── stdlib → structlog bridge ─────────────────────────────────────────────────
+
 
 class _StructlogHandler(logging.Handler):
     """
@@ -184,11 +189,12 @@ class _StructlogHandler(logging.Handler):
     The stdlib record's `name` becomes the structlog `logger` field,
     and the original log level is preserved.
     """
+
     _LEVEL_TO_METHOD = {
-        logging.DEBUG:    "debug",
-        logging.INFO:     "info",
-        logging.WARNING:  "warning",
-        logging.ERROR:    "error",
+        logging.DEBUG: "debug",
+        logging.INFO: "info",
+        logging.WARNING: "warning",
+        logging.ERROR: "error",
         logging.CRITICAL: "critical",
     }
 
@@ -209,6 +215,7 @@ class _StructlogHandler(logging.Handler):
 
 # ── Uvicorn access log reformatter ────────────────────────────────────────────
 
+
 class _UvicornAccessReformatter(logging.Filter):
     """
     Parses uvicorn's access log string into structured fields so the
@@ -217,7 +224,9 @@ class _UvicornAccessReformatter(logging.Filter):
     uvicorn emits: '127.0.0.1:52000 - "GET /api/v1/health HTTP/1.1" 200'
     We parse this into { client, method, path, http_version, status }.
     """
+
     import re
+
     _PATTERN = re.compile(
         r'(?P<client>\S+) - "(?P<method>\w+) (?P<path>\S+) (?P<proto>[^"]+)" (?P<status>\d+)'
     )
@@ -226,10 +235,10 @@ class _UvicornAccessReformatter(logging.Filter):
         msg = record.getMessage()
         m = self._PATTERN.match(msg)
         if m:
-            record.path    = m.group("path")
-            record.method  = m.group("method")
-            record.status  = int(m.group("status"))
-            record.client  = m.group("client")
+            record.path = m.group("path")
+            record.method = m.group("method")
+            record.status = int(m.group("status"))
+            record.client = m.group("client")
             # Health check suppression at the stdlib level
             if record.path in {"/api/v1/health", "/health", "/"} and record.status == 200:
                 return False
@@ -237,6 +246,7 @@ class _UvicornAccessReformatter(logging.Filter):
 
 
 # ── Core configuration ────────────────────────────────────────────────────────
+
 
 def _build_processors(*, production: bool, log_level: int) -> list:
     """
@@ -269,8 +279,8 @@ def _build_processors(*, production: bool, log_level: int) -> list:
 
     if production:
         renderer = structlog.processors.JSONRenderer()
-        sampling = [_SamplingFilter()]          # only sample in prod
-        health   = [_SuppressHealthChecks()]
+        sampling = [_SamplingFilter()]  # only sample in prod
+        health = [_SuppressHealthChecks()]
         return shared_pre + sampling + health + shared_post + [renderer]
     else:
         renderer = structlog.dev.ConsoleRenderer(
@@ -335,6 +345,7 @@ def configure_logging() -> None:
 
 # ── Request context helpers ───────────────────────────────────────────────────
 
+
 def bind_request_context(**kwargs: Any) -> None:
     """
     Bind key-value pairs to the current async request context.
@@ -356,6 +367,7 @@ def clear_request_context() -> None:
 
 # ── Public logger factory ─────────────────────────────────────────────────────
 
+
 def get_logger(name: str = __name__) -> structlog.BoundLogger:
     """
     Return a structlog BoundLogger bound to the given module name.
@@ -372,6 +384,7 @@ def get_logger(name: str = __name__) -> structlog.BoundLogger:
 
 
 # ── Uvicorn log configuration ─────────────────────────────────────────────────
+
 
 def get_uvicorn_log_config() -> dict:
     """
@@ -407,8 +420,8 @@ def get_uvicorn_log_config() -> dict:
             },
         },
         "loggers": {
-            "uvicorn":          {"handlers": ["null"], "level": level, "propagate": True},
-            "uvicorn.error":    {"handlers": ["null"], "level": "WARNING", "propagate": True},
-            "uvicorn.access":   {"handlers": ["null"], "level": level, "propagate": True},
+            "uvicorn": {"handlers": ["null"], "level": level, "propagate": True},
+            "uvicorn.error": {"handlers": ["null"], "level": "WARNING", "propagate": True},
+            "uvicorn.access": {"handlers": ["null"], "level": level, "propagate": True},
         },
     }

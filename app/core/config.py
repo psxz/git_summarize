@@ -4,11 +4,11 @@ app/core/config.py
 Centralised, type-safe settings loaded from environment variables or .env file.
 Pydantic-settings v2 style.
 """
+
 from __future__ import annotations
 
 from enum import Enum
 from functools import lru_cache
-from typing import Optional
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -18,7 +18,7 @@ class LLMProvider(str, Enum):
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
     GOOGLE = "google"
-    NEBIUS = "nebius"     # Nebius Token Factory — MiniMaxAI/MiniMax-M2.1 and others
+    NEBIUS = "nebius"  # Nebius Token Factory — MiniMaxAI/MiniMax-M2.1 and others
 
 
 class SummarizationStrategy(str, Enum):
@@ -40,12 +40,12 @@ class Settings(BaseSettings):
     github_api_version: str = "2022-11-28"
 
     # ── LLM ──────────────────────────────────────────────────────────────
-    openai_api_key: Optional[str] = None
-    anthropic_api_key: Optional[str] = None
-    google_api_key: Optional[str] = None
+    openai_api_key: str | None = None
+    anthropic_api_key: str | None = None
+    google_api_key: str | None = None
     # Nebius Token Factory — OpenAI-compatible inference endpoint
     # Get your key at: https://studio.nebius.com/settings/api-keys
-    nebius_api_key: Optional[str] = None
+    nebius_api_key: str | None = None
     nebius_api_base: str = "https://api.studio.nebius.com/v1/"
     default_llm_provider: LLMProvider = LLMProvider.OPENAI
     default_llm_model: str = "gpt-4o-mini"
@@ -58,17 +58,17 @@ class Settings(BaseSettings):
     chunk_overlap_tokens: int = Field(150, ge=0)
 
     # ── Cache ─────────────────────────────────────────────────────────────
-    redis_url: Optional[str] = None
+    redis_url: str | None = None
     cache_ttl_seconds: int = Field(3600, gt=0)
 
     # ── API Security ──────────────────────────────────────────────────────
     # Legacy static Bearer key — used only when LOGTO_ENDPOINT is not set.
-    api_secret_key: Optional[str] = None
+    api_secret_key: str | None = None
 
     # ── Logto OIDC / JWT Auth ─────────────────────────────────────────────────
     # Set LOGTO_ENDPOINT to enable Logto JWT validation.
     # Leave blank to fall back to static API_SECRET_KEY (dev / open mode).
-    logto_endpoint: Optional[str] = Field(
+    logto_endpoint: str | None = Field(
         None,
         description=(
             "Logto tenant base URL, e.g. https://my-tenant.logto.app. "
@@ -76,7 +76,7 @@ class Settings(BaseSettings):
             "Issuer   -> {logto_endpoint}/oidc"
         ),
     )
-    logto_api_resource: Optional[str] = Field(
+    logto_api_resource: str | None = Field(
         None,
         description=(
             "API resource indicator registered in Logto, "
@@ -101,13 +101,13 @@ class Settings(BaseSettings):
     )
 
     # ── Observability ─────────────────────────────────────────────────────
-    langchain_tracing_v2: Optional[str] = None
-    langchain_api_key: Optional[str] = None
+    langchain_tracing_v2: str | None = None
+    langchain_api_key: str | None = None
     langchain_project: str = "github-summarizer"
     log_level: str = "INFO"
 
     # Arize Phoenix (self-hosted LLM observability)
-    phoenix_collector_endpoint: Optional[str] = Field(
+    phoenix_collector_endpoint: str | None = Field(
         None,
         description=(
             "OTLP/gRPC endpoint of your Phoenix instance, "
@@ -117,7 +117,7 @@ class Settings(BaseSettings):
 
     # ── Runtime Limits ────────────────────────────────────────────────────
     max_files_to_scan: int = Field(20, gt=0)
-    max_file_size_bytes: int = Field(102_400, gt=0)   # 100 KB
+    max_file_size_bytes: int = Field(102_400, gt=0)  # 100 KB
     max_total_tokens: int = Field(80_000, gt=0)
 
     @field_validator("github_token")

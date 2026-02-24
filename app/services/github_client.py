@@ -10,18 +10,15 @@ Implements:
   • Fetches: metadata, README, languages, file contents, file tree
   • 100 MB / 1,000-file guard rails per the GitHub API docs
 """
+
 from __future__ import annotations
 
 import base64
 import re
-from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 import httpx
-from tenacity import (
-    retry_if_exception,
-)
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
@@ -34,10 +31,7 @@ _RATE_LIMIT_CODES = {403, 429}
 
 def _is_rate_limited(exc: BaseException) -> bool:
     """tenacity predicate: retry only on rate-limit HTTP errors."""
-    return (
-        isinstance(exc, httpx.HTTPStatusError)
-        and exc.response.status_code in _RATE_LIMIT_CODES
-    )
+    return isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code in _RATE_LIMIT_CODES
 
 
 def _build_headers(token: str, api_version: str) -> dict[str, str]:
@@ -95,8 +89,6 @@ class GitHubClient:
 
     async def _get_with_retry(self, url: str, **kwargs: Any) -> httpx.Response:
         """GET with tenacity exponential backoff on rate-limit errors."""
-        last_exc: Exception | None = None
-
         for attempt in range(1, 6):  # max 5 attempts
             async with httpx.AsyncClient(headers=self._headers, timeout=30) as c:
                 response = await c.get(url, **kwargs)
@@ -107,7 +99,7 @@ class GitHubClient:
                 response.raise_for_status()
                 return response
 
-            retry_after = int(response.headers.get("Retry-After", str(2 ** attempt)))
+            retry_after = int(response.headers.get("Retry-After", str(2**attempt)))
             logger.warning(
                 "github_rate_limited",
                 attempt=attempt,
@@ -116,6 +108,7 @@ class GitHubClient:
                 url=url,
             )
             import asyncio
+
             await asyncio.sleep(min(retry_after, 60))
 
         raise httpx.HTTPStatusError(
@@ -134,7 +127,7 @@ class GitHubClient:
             raise ValueError(f"Repository '{owner}/{repo}' not found or is private.")
         return response.json()
 
-    async def get_readme(self, owner: str, repo: str) -> Optional[str]:
+    async def get_readme(self, owner: str, repo: str) -> str | None:
         """
         GET /repos/{owner}/{repo}/readme — raw README content.
         Returns None if the repo has no README.
@@ -172,9 +165,7 @@ class GitHubClient:
         data = response.json()
         return data if isinstance(data, list) else []
 
-    async def get_file_content(
-        self, owner: str, repo: str, path: str
-    ) -> Optional[str]:
+    async def get_file_content(self, owner: str, repo: str, path: str) -> str | None:
         """
         Fetch and decode a file's text content.
         Skips files > MAX_FILE_SIZE_BYTES or binary files.
@@ -218,9 +209,7 @@ class GitHubClient:
         response = await self._get_with_retry(url)
         return response.json()
 
-    async def get_commit_activity(
-        self, owner: str, repo: str
-    ) -> list[dict[str, Any]]:
+    async def get_commit_activity(self, owner: str, repo: str) -> list[dict[str, Any]]:
         """GET /repos/{owner}/{repo}/stats/commit_activity — weekly commits."""
         url = f"{GITHUB_API}/repos/{owner}/{repo}/stats/commit_activity"
         response = await self._get_with_retry(url)

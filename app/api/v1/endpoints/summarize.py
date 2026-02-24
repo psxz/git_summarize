@@ -8,13 +8,14 @@ POST /summarize/stream  — SSE streaming summary
 GET  /health            — service health check
 GET  /rate-limits       — GitHub rate limit status
 """
+
 from __future__ import annotations
 
 import json
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
+from datetime import UTC
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import StreamingResponse
 from sse_starlette.sse import EventSourceResponse
 
 from app.core.config import get_settings
@@ -37,9 +38,11 @@ from app.services.summarizer import summarize_repo, summarize_repo_stream
 
 logger = get_logger(__name__)
 router = APIRouter()
+_background_tasks: set[object] = set()  # prevent GC of fire-and-forget tasks
 
 
 # ── POST /summarize ───────────────────────────────────────────────────────────
+
 
 @router.post(
     "/summarize",
@@ -83,12 +86,16 @@ async def summarize_endpoint(
 
     # Cache write (non-blocking)
     import asyncio
-    asyncio.create_task(cache_set(cache_key, result.model_dump()))
+
+    task = asyncio.create_task(cache_set(cache_key, result.model_dump()))
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
 
     return result
 
 
 # ── POST /summarize/stream ────────────────────────────────────────────────────
+
 
 @router.post(
     "/summarize/stream",
@@ -122,6 +129,7 @@ async def summarize_stream_endpoint(
 
 # ── GET /health ───────────────────────────────────────────────────────────────
 
+
 @router.get(
     "/health",
     response_model=HealthResponse,
@@ -152,6 +160,7 @@ async def health_check() -> HealthResponse:
 
 # ── GET /rate-limits ──────────────────────────────────────────────────────────
 
+
 @router.get(
     "/rate-limits",
     response_model=RateLimitResponse,
@@ -170,13 +179,13 @@ async def rate_limits_endpoint(
             detail=f"Could not fetch GitHub rate limits: {exc}",
         )
 
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     core = data.get("resources", {}).get("core", {})
     search = data.get("resources", {}).get("search", {})
 
     reset_ts = core.get("reset", 0)
-    reset_utc = datetime.fromtimestamp(reset_ts, tz=timezone.utc).isoformat()
+    reset_utc = datetime.fromtimestamp(reset_ts, tz=UTC).isoformat()
 
     return RateLimitResponse(
         core_limit=core.get("limit", 0),
