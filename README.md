@@ -156,8 +156,7 @@ uv run pytest tests/ -v     # tests (63 passing)
 ```
 
 ## Deployment
-Includes `render.yaml` for Render.com and `.github/workflows/ci.yml` for
-GitHub Actions CI (lint → test → docker build).
+Includes `.github/workflows/ci.yml` for GitHub Actions CI (lint → test → docker build).
 
 ## License
 MIT
