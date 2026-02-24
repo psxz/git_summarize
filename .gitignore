@@ -45,6 +45,10 @@ htmlcov/
 # Ignore mounted data volumes
 mnt/user-data/
 
+# ── API testing artifacts ─────────────────────────────────────
+scripts/_req.json
+scripts/_*.json
+
 # ── Misc ──────────────────────────────────────────────────────
 *.log
 *.bak
