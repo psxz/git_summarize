@@ -60,7 +60,8 @@ dev = [
     "httpx>=0.27.0",           # TestClient transport
     "ruff>=0.4.0",             # linter + formatter
     "mypy>=1.10.0",            # type checker
-    "types-redis>=4.6.0",
+    "types-redis>=4.6",
+    "yamllint>=1.35.0",        # YAML linter
 ]
 
 [project.scripts]
@@ -98,6 +99,14 @@ ignore = [
     "E501",   # line too long (ruff format handles this)
     "B008",   # FastAPI Depends() in function defaults
     "UP007",  # X | Y union syntax (keep Optional for clarity)
+    "B904",   # raise from — FastAPI HTTPException re-raises are idiomatic
+    "UP042",  # StrEnum — keep str+Enum for Pydantic v2 compat
+    "RUF001", # ambiguous unicode (intentional en-dashes in strings)
+    "RUF002", # ambiguous unicode in docstrings
+    "TC002",  # type-checking imports — some are runtime-needed
+    "TC003",  # type-checking imports — some are runtime-needed
+    "B905",   # zip() strict — not always applicable
+    "RUF012", # mutable class defaults — used by structlog processors
 ]
 
 [tool.ruff.lint.isort]

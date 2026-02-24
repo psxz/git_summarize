@@ -9,11 +9,12 @@ TTL: configurable via CACHE_TTL_SECONDS (default 1 hour).
 If REDIS_URL is not set, falls back to an in-process LRU dict
 (not suitable for multi-worker production, but useful for dev/testing).
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any, Optional
+from typing import Any
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
@@ -42,13 +43,14 @@ async def _get_redis():
         return None
     try:
         import redis.asyncio as aioredis
+
         return aioredis.from_url(settings.redis_url, decode_responses=True)
     except Exception as e:
         logger.warning("redis_unavailable", error=str(e))
         return None
 
 
-async def cache_get(key: str) -> Optional[Any]:
+async def cache_get(key: str) -> Any | None:
     """Return cached value or None."""
     redis = await _get_redis()
     if redis:

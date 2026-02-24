@@ -54,15 +54,15 @@ can depend on.  Key fields:
      resource: "https://api.yourapp.com"
      scope: "openid profile repo:summarize"
 """
+
 from __future__ import annotations
 
 import secrets
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Optional
 
 import jwt
-from fastapi import Depends, HTTPException, Security, status
+from fastapi import HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import PyJWKClient
 
@@ -75,15 +75,17 @@ _bearer_scheme = HTTPBearer(auto_error=False)
 
 # ── AuthInfo ──────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class AuthInfo:
     """Validated identity extracted from a Logto JWT (or static-key session)."""
+
     sub: str
-    client_id: Optional[str] = None
-    organization_id: Optional[str] = None
+    client_id: str | None = None
+    organization_id: str | None = None
     scopes: list[str] = field(default_factory=list)
     audience: list[str] = field(default_factory=list)
-    github_token: Optional[str] = None   # per-user GitHub access token
+    github_token: str | None = None  # per-user GitHub access token
 
     def requires_scope(self, scope: str) -> bool:
         return scope in self.scopes
@@ -101,6 +103,7 @@ class AuthInfo:
 
 # ── JWKS client (singleton per settings, handles key rotation) ───────────────
 
+
 @lru_cache(maxsize=1)
 def _get_jwks_client() -> PyJWKClient:
     settings = get_settings()
@@ -110,6 +113,7 @@ def _get_jwks_client() -> PyJWKClient:
 
 
 # ── JWT validation ────────────────────────────────────────────────────────────
+
 
 def _validate_logto_jwt(token: str) -> AuthInfo:
     """
@@ -127,7 +131,7 @@ def _validate_logto_jwt(token: str) -> AuthInfo:
             signing_key.key,
             algorithms=["RS256"],
             issuer=issuer,
-            options={"verify_aud": False},   # manual audience check below
+            options={"verify_aud": False},  # manual audience check below
         )
     except jwt.ExpiredSignatureError:
         raise HTTPException(
@@ -175,10 +179,8 @@ def _validate_logto_jwt(token: str) -> AuthInfo:
             )
 
     # ── GitHub token: custom claim -> env-var fallback ────────────────────
-    github_token: Optional[str] = (
-        payload.get(settings.logto_github_token_claim)
-        or settings.github_token
-        or None
+    github_token: str | None = (
+        payload.get(settings.logto_github_token_claim) or settings.github_token or None
     )
 
     if not github_token:
@@ -201,8 +203,9 @@ def _validate_logto_jwt(token: str) -> AuthInfo:
 
 # ── FastAPI dependency ────────────────────────────────────────────────────────
 
+
 async def get_auth_info(
-    credentials: Optional[HTTPAuthorizationCredentials] = Security(_bearer_scheme),
+    credentials: HTTPAuthorizationCredentials | None = Security(_bearer_scheme),
 ) -> AuthInfo:
     """
     FastAPI dependency. Returns a validated AuthInfo for each request.

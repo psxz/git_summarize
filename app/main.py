@@ -11,6 +11,7 @@ Key features:
   • Versioned router mounting (/api/v1/...)
   • Interactive docs at /docs (Swagger) and /redoc (ReDoc)
 """
+
 from __future__ import annotations
 
 import time
@@ -28,13 +29,13 @@ from app.core.logging import (
     clear_request_context,
     configure_logging,
     get_logger,
-    get_uvicorn_log_config,
 )
 
 logger = get_logger(__name__)
 
 
 # ── Lifespan ──────────────────────────────────────────────────────────────────
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -46,6 +47,7 @@ async def lifespan(app: FastAPI):
     # Enable LangSmith tracing if configured
     if settings.langchain_api_key and settings.langchain_tracing_v2 == "true":
         import os
+
         os.environ["LANGCHAIN_TRACING_V2"] = "true"
         os.environ["LANGCHAIN_API_KEY"] = settings.langchain_api_key
         os.environ["LANGCHAIN_PROJECT"] = settings.langchain_project
@@ -53,6 +55,7 @@ async def lifespan(app: FastAPI):
 
     # Enable Arize Phoenix tracing if configured
     from app.core.observability import init_observability, shutdown_observability
+
     init_observability()
 
     logger.info(
@@ -71,8 +74,8 @@ async def lifespan(app: FastAPI):
 
 # ── App factory ───────────────────────────────────────────────────────────────
 
+
 def create_app() -> FastAPI:
-    settings = get_settings()
 
     app = FastAPI(
         title="GitHub Repository Summarization API",
@@ -149,6 +152,7 @@ def create_app() -> FastAPI:
     @app.get("/", include_in_schema=False)
     async def root():
         from fastapi.responses import RedirectResponse
+
         return RedirectResponse(url="/docs")
 
     return app

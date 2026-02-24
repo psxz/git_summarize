@@ -20,16 +20,15 @@ Public API:
   init_observability()   Call once at startup (lifespan handler).
   shutdown_observability()  Call at shutdown (flushes pending spans).
 """
-from __future__ import annotations
 
-from typing import Optional
+from __future__ import annotations
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-_tracer_provider: Optional[object] = None
+_tracer_provider: object | None = None
 
 
 def init_observability() -> bool:

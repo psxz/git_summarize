@@ -20,12 +20,12 @@ Steps:
 Follows the research document's recommendation to maximise information density
 before sending content to the LLM.
 """
+
 from __future__ import annotations
 
 import re
 import tempfile
 from pathlib import Path
-from typing import Iterator, Optional
 
 import tiktoken
 
@@ -45,7 +45,7 @@ _BADGE_MD = re.compile(
 )
 # HTML <img> badge tags
 _BADGE_HTML = re.compile(
-    r'<img[^>]+(?:shields\.io|badge|build-status|travis)[^>]*>',
+    r"<img[^>]+(?:shields\.io|badge|build-status|travis)[^>]*>",
     re.IGNORECASE,
 )
 # Bare image links that are decorative (social icons, etc.)
@@ -187,13 +187,16 @@ def chunk_text(text: str, chunk_size: int | None = None, overlap: int | None = N
 
     for i in range(1, len(raw_chunks)):
         prev_tokens = enc.encode(raw_chunks[i - 1])
-        overlap_text = enc.decode(prev_tokens[-overlap:]) if len(prev_tokens) > overlap else raw_chunks[i - 1]
+        overlap_text = (
+            enc.decode(prev_tokens[-overlap:]) if len(prev_tokens) > overlap else raw_chunks[i - 1]
+        )
         result.append(overlap_text + "\n\n" + raw_chunks[i])
 
     return result
 
 
 # ── File-tree builder ─────────────────────────────────────────────────────────
+
 
 def build_file_tree_snippet(
     entries: list[dict],
@@ -205,8 +208,15 @@ def build_file_tree_snippet(
     Excludes common noise directories (node_modules, .git, __pycache__, etc.).
     """
     _IGNORED = {
-        "node_modules", ".git", "__pycache__", ".mypy_cache",
-        ".pytest_cache", "dist", "build", ".venv", "venv",
+        "node_modules",
+        ".git",
+        "__pycache__",
+        ".mypy_cache",
+        ".pytest_cache",
+        "dist",
+        "build",
+        ".venv",
+        "venv",
     }
     lines: list[str] = []
 
@@ -249,29 +259,45 @@ def build_file_tree_snippet(
 # Extensions that ChunkHound's cAST parser handles well.
 # Markdown / rst / txt are intentionally excluded — the recursive splitter
 # respects Markdown heading boundaries better for prose documents.
-CAST_SUPPORTED_EXTENSIONS: frozenset[str] = frozenset({
-    # ── Compiled languages ──────────────────────────────────────
-    ".py", ".pyx",
-    ".js", ".jsx", ".mjs", ".cjs",
-    ".ts", ".tsx",
-    ".java", ".kt", ".groovy",
-    ".c", ".h",
-    ".cpp", ".cc", ".cxx", ".hpp",
-    ".cs",
-    ".go",
-    ".rs",
-    ".hs",
-    ".swift",
-    ".sh", ".bash",
-    ".php",
-    ".vue", ".svelte",
-    ".zig",
-    # ── Config / data (AST-parseable) ────────────────────────────
-    ".toml",
-    ".json",
-    ".yaml", ".yml",
-    ".hcl",
-})
+CAST_SUPPORTED_EXTENSIONS: frozenset[str] = frozenset(
+    {
+        # ── Compiled languages ──────────────────────────────────────
+        ".py",
+        ".pyx",
+        ".js",
+        ".jsx",
+        ".mjs",
+        ".cjs",
+        ".ts",
+        ".tsx",
+        ".java",
+        ".kt",
+        ".groovy",
+        ".c",
+        ".h",
+        ".cpp",
+        ".cc",
+        ".cxx",
+        ".hpp",
+        ".cs",
+        ".go",
+        ".rs",
+        ".hs",
+        ".swift",
+        ".sh",
+        ".bash",
+        ".php",
+        ".vue",
+        ".svelte",
+        ".zig",
+        # ── Config / data (AST-parseable) ────────────────────────────
+        ".toml",
+        ".json",
+        ".yaml",
+        ".yml",
+        ".hcl",
+    }
+)
 
 
 def is_code_file(filename: str) -> bool:
@@ -281,11 +307,11 @@ def is_code_file(filename: str) -> bool:
 
 # ── Lazy singleton for the ChunkHound parser ─────────────────────────────────
 
-_CAST_PARSER: Optional[object] = None   # type: ignore[type-arg]
-_CAST_AVAILABLE: Optional[bool] = None  # None = not yet checked
+_CAST_PARSER: object | None = None  # type: ignore[type-arg]
+_CAST_AVAILABLE: bool | None = None  # None = not yet checked
 
 
-def _get_cast_parser() -> Optional[object]:
+def _get_cast_parser() -> object | None:
     """
     Return a cached UniversalParser instance, or None if ChunkHound is not
     installed / importable.  Logs a one-time warning on first failure.
@@ -310,7 +336,7 @@ def _get_cast_parser() -> Optional[object]:
         logger.warning(
             "chunkhound_not_installed",
             msg="Falling back to recursive text splitter for code files. "
-                "Install with: pip install chunkhound>=4.0.0",
+            "Install with: pip install chunkhound>=4.0.0",
         )
         return None
     except Exception as exc:
@@ -321,10 +347,11 @@ def _get_cast_parser() -> Optional[object]:
 
 # ── Public cAST chunking function ─────────────────────────────────────────────
 
+
 def chunk_code_with_cast(
     content: str,
     filename: str,
-    max_tokens: Optional[int] = None,
+    max_tokens: int | None = None,
 ) -> list[str]:
     """
     Chunk source code using ChunkHound's cAST algorithm.
@@ -409,9 +436,7 @@ def chunk_code_with_cast(
             if estimate_tokens(annotated) > max_tokens:
                 sub_chunks = chunk_text(chunk_content, chunk_size=max_tokens)
                 for i, sub in enumerate(sub_chunks, 1):
-                    raw_chunks.append(
-                        f"{header} (part {i}/{len(sub_chunks)})\n\n{sub}"
-                    )
+                    raw_chunks.append(f"{header} (part {i}/{len(sub_chunks)})\n\n{sub}")
             else:
                 raw_chunks.append(annotated)
 

@@ -6,28 +6,27 @@ Tests cover URL validation, caching, error handling, and endpoint contracts.
 
 Run with:  pytest tests/ -v
 """
+
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
-from httpx import AsyncClient
 
-from app.main import app
 from app.core.security import AuthInfo, verify_api_key
+from app.main import app
 from app.schemas.summarize import (
     RepoMetadata,
     SummarizationMeta,
     SummarizeResponse,
 )
+from app.services.github_client import parse_repo_url
 from app.services.preprocessor import (
     chunk_text,
     estimate_tokens,
     sanitize_markdown,
 )
-from app.services.github_client import parse_repo_url
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -36,6 +35,7 @@ _MOCK_AUTH = AuthInfo(
     github_token="ghp_test_token",
     scopes=["repo:summarize"],
 )
+
 
 @pytest.fixture
 def client():
@@ -75,6 +75,7 @@ _MOCK_RESPONSE = SummarizeResponse(
 
 # ── URL Parsing Tests ─────────────────────────────────────────────────────────
 
+
 class TestParseRepoUrl:
     def test_https_url(self):
         owner, repo = parse_repo_url("https://github.com/tiangolo/fastapi")
@@ -106,6 +107,7 @@ class TestParseRepoUrl:
 
 
 # ── Preprocessor Tests ────────────────────────────────────────────────────────
+
 
 class TestSanitizeMarkdown:
     def test_removes_shields_badge(self):
@@ -168,37 +170,47 @@ class TestChunkText:
 
 # ── Request Schema Validation ─────────────────────────────────────────────────
 
+
 class TestSummarizeRequest:
     def test_valid_github_url(self):
         from app.schemas.summarize import SummarizeRequest
+
         req = SummarizeRequest(repo_url="https://github.com/tiangolo/fastapi")
         assert req.repo_url == "https://github.com/tiangolo/fastapi"
 
     def test_invalid_url_raises_validation_error(self):
         from pydantic import ValidationError
+
         from app.schemas.summarize import SummarizeRequest
+
         with pytest.raises(ValidationError):
             SummarizeRequest(repo_url="https://evil.com/xss")
 
     def test_gitlab_url_rejected(self):
         from pydantic import ValidationError
+
         from app.schemas.summarize import SummarizeRequest
+
         with pytest.raises(ValidationError):
             SummarizeRequest(repo_url="https://gitlab.com/user/repo")
 
 
 # ── API Endpoint Tests ────────────────────────────────────────────────────────
 
+
 class TestHealthEndpoint:
     def test_health_returns_200(self, client):
-        with patch(
-            "app.api.v1.endpoints.summarize.GitHubClient.get_rate_limits",
-            new_callable=AsyncMock,
-            return_value={"rate": {"limit": 5000, "remaining": 4999, "reset": 0}},
-        ), patch(
-            "app.api.v1.endpoints.summarize.is_cache_connected",
-            new_callable=AsyncMock,
-            return_value=False,
+        with (
+            patch(
+                "app.api.v1.endpoints.summarize.GitHubClient.get_rate_limits",
+                new_callable=AsyncMock,
+                return_value={"rate": {"limit": 5000, "remaining": 4999, "reset": 0}},
+            ),
+            patch(
+                "app.api.v1.endpoints.summarize.is_cache_connected",
+                new_callable=AsyncMock,
+                return_value=False,
+            ),
         ):
             response = client.get("/api/v1/health")
         assert response.status_code == 200
@@ -216,17 +228,21 @@ class TestSummarizeEndpoint:
         assert response.status_code == 422
 
     def test_valid_request_mocked(self, client):
-        with patch(
-            "app.api.v1.endpoints.summarize.summarize_repo",
-            new_callable=AsyncMock,
-            return_value=_MOCK_RESPONSE,
-        ), patch(
-            "app.api.v1.endpoints.summarize.cache_get",
-            new_callable=AsyncMock,
-            return_value=None,
-        ), patch(
-            "app.api.v1.endpoints.summarize.cache_set",
-            new_callable=AsyncMock,
+        with (
+            patch(
+                "app.api.v1.endpoints.summarize.summarize_repo",
+                new_callable=AsyncMock,
+                return_value=_MOCK_RESPONSE,
+            ),
+            patch(
+                "app.api.v1.endpoints.summarize.cache_get",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+            patch(
+                "app.api.v1.endpoints.summarize.cache_set",
+                new_callable=AsyncMock,
+            ),
         ):
             response = client.post(
                 "/api/v1/summarize",
@@ -255,10 +271,12 @@ class TestSummarizeEndpoint:
 
 # ── Cache Tests ───────────────────────────────────────────────────────────────
 
+
 class TestCache:
     @pytest.mark.asyncio
     async def test_memory_cache_roundtrip(self):
-        from app.services.cache import cache_get, cache_set, _make_cache_key
+        from app.services.cache import _make_cache_key, cache_get, cache_set
+
         key = _make_cache_key("https://github.com/test/repo", "openai", "gpt-4o", "map_reduce")
         payload = {"test": "data", "value": 42}
         await cache_set(key, payload)
