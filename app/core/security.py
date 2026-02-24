@@ -224,9 +224,13 @@ async def get_auth_info(
     token = credentials.credentials if credentials else None
 
     # ── Static key fast path (works even when Logto is also configured) ───
-    if settings.api_secret_key and token and secrets.compare_digest(
-        token.encode(),
-        settings.api_secret_key.encode(),
+    if (
+        settings.api_secret_key
+        and token
+        and secrets.compare_digest(
+            token.encode(),
+            settings.api_secret_key.encode(),
+        )
     ):
         return AuthInfo(sub="static-key-user", github_token=settings.github_token)
 
