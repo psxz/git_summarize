@@ -47,8 +47,8 @@ class Settings(BaseSettings):
     # Get your key at: https://studio.nebius.com/settings/api-keys
     nebius_api_key: str | None = None
     nebius_api_base: str = "https://api.studio.nebius.com/v1/"
-    default_llm_provider: LLMProvider = LLMProvider.OPENAI
-    default_llm_model: str = "gpt-4o-mini"
+    default_llm_provider: LLMProvider = LLMProvider.NEBIUS
+    default_llm_model: str = "MiniMaxAI/MiniMax-M2.1"
     llm_temperature: float = Field(0.2, ge=0.0, le=2.0)
     llm_max_tokens: int = Field(2048, gt=0)
 
