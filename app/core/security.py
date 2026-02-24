@@ -210,40 +210,49 @@ async def get_auth_info(
     """
     FastAPI dependency. Returns a validated AuthInfo for each request.
 
-    Auth mode is selected automatically based on which env vars are set:
-      LOGTO_ENDPOINT set   -> Logto JWT validation (production)
-      API_SECRET_KEY set   -> static shared-secret check (dev/self-hosted)
-      Neither set          -> open access (local dev without auth)
+    Auth mode is selected automatically based on which env vars are set.
+    When both LOGTO_ENDPOINT and API_SECRET_KEY are configured, the static
+    key is checked first (cheap comparison) before attempting Logto JWT
+    validation.  This allows production Logto clients and simple API-key
+    scripts to coexist.
+
+      1. API_SECRET_KEY match  -> static-key AuthInfo (fast path)
+      2. LOGTO_ENDPOINT set    -> Logto JWT validation
+      3. Neither set           -> open access (local dev)
     """
     settings = get_settings()
+    token = credentials.credentials if credentials else None
+
+    # ── Static key fast path (works even when Logto is also configured) ───
+    if settings.api_secret_key and token and secrets.compare_digest(
+        token.encode(),
+        settings.api_secret_key.encode(),
+    ):
+        return AuthInfo(sub="static-key-user", github_token=settings.github_token)
 
     # ── Logto JWT mode ────────────────────────────────────────────────────
     if settings.logto_endpoint:
-        if credentials is None:
+        if token is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Missing Authorization header. Use: Bearer <logto_access_token>",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        return _validate_logto_jwt(credentials.credentials)
+        return _validate_logto_jwt(token)
 
-    # ── Static key fallback ───────────────────────────────────────────────
+    # ── Static key only (no Logto) ────────────────────────────────────────
     if settings.api_secret_key:
-        if credentials is None:
+        if token is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Missing Authorization header. Use: Bearer <api_secret_key>",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        if not secrets.compare_digest(
-            credentials.credentials.encode(),
-            settings.api_secret_key.encode(),
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Invalid API key.",
-            )
-        return AuthInfo(sub="static-key-user", github_token=settings.github_token)
+        # If we reach here, the token didn't match the static key above
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid API key.",
+        )
 
     # ── Open / dev mode ───────────────────────────────────────────────────
     logger.warning(
