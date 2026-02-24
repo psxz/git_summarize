@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 # ── Request ───────────────────────────────────────────────────────────────────
 
@@ -31,10 +31,12 @@ class SummarizeRequest(BaseModel):
 
     repo_url: str = Field(
         ...,
+        validation_alias=AliasChoices("repo_url", "github_url"),
         description=(
             "Full GitHub repository URL. "
             "Accepts HTTPS (https://github.com/owner/repo) "
-            "or SSH (git@github.com:owner/repo.git) formats."
+            "or SSH (git@github.com:owner/repo.git) formats. "
+            "Also accepted as 'github_url'."
         ),
         examples=["https://github.com/tiangolo/fastapi"],
     )

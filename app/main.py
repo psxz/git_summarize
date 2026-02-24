@@ -1,15 +1,8 @@
 """
-app/main.py
-────────────
-FastAPI application factory.
+App factory — creates and configures the FastAPI application.
 
-Key features:
-  • Lifespan handler (startup/shutdown) for logging init and observability hooks
-  • CORS middleware
-  • Request-ID middleware for distributed tracing
-  • Global exception handlers
-  • Versioned router mounting (/api/v1/...)
-  • Interactive docs at /docs (Swagger) and /redoc (ReDoc)
+Handles CORS, request-ID middleware, structured logging init,
+observability hooks, and mounts the versioned API router.
 """
 
 from __future__ import annotations
@@ -18,7 +11,7 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, status
+from fastapi import Depends, FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -30,6 +23,7 @@ from app.core.logging import (
     configure_logging,
     get_logger,
 )
+from app.schemas.summarize import SummarizeRequest, SummarizeResponse
 
 logger = get_logger(__name__)
 
@@ -154,6 +148,32 @@ def create_app() -> FastAPI:
         from fastapi.responses import RedirectResponse
 
         return RedirectResponse(url="/docs")
+
+    # ── Top-level aliases (evaluation convenience) ────────────────────────
+    # These mirror /api/v1/* so `POST /summarize` works alongside the
+    # versioned API. Auth is applied identically.
+
+    from app.core.security import AuthInfo, get_auth_info
+
+    @app.post(
+        "/summarize",
+        response_model=SummarizeResponse,
+        summary="Summarise a GitHub Repository (alias)",
+        include_in_schema=False,
+    )
+    async def summarize_alias(
+        request: SummarizeRequest,
+        auth: AuthInfo = Depends(get_auth_info),
+    ) -> SummarizeResponse:
+        from app.api.v1.endpoints.summarize import summarize_endpoint
+
+        return await summarize_endpoint(request, auth)
+
+    @app.get("/health", include_in_schema=False)
+    async def health_alias():
+        from app.api.v1.endpoints.summarize import health_check
+
+        return await health_check()
 
     return app
 

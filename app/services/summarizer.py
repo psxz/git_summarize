@@ -1,15 +1,11 @@
 """
-app/services/summarizer.py
-───────────────────────────
-Orchestrates the full summarization pipeline:
+Core summarization pipeline.
 
-  1. Fetch GitHub data (metadata, README, supplementary files)
-  2. Sanitize & chunk content
-  3. Summarize via Map-Reduce or Iterative Refinement (LangChain)
-  4. Return structured SummarizeResponse
+Pulls repo data from GitHub, sanitizes and chunks the content,
+runs it through the LLM via Map-Reduce (or Iterative Refinement),
+and assembles the final SummarizeResponse.
 
-Both sync (for JSON endpoint) and async-generator (for SSE streaming)
-variants are provided.
+Both sync (JSON endpoint) and streaming (SSE) variants live here.
 """
 
 from __future__ import annotations
