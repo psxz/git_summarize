@@ -1,4 +1,4 @@
-# Dockerfile.phoenix — Arize Phoenix for Render.com private service
+# Dockerfile.phoenix — Arize Phoenix for private service
 # Lightweight wrapper to run Phoenix with persistent storage.
 FROM arizephoenix/phoenix:latest
 
