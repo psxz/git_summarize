@@ -105,6 +105,7 @@ services:
     name: github-summarizer-redis
     plan: starter
     maxmemoryPolicy: allkeys-lru
+    ipAllowList: []  # empty = only Render internal network can connect
 
   # ── Phoenix (LLM Observability) ───────────────────────────────────────
   # Runs as a private service — only reachable from within the Render
