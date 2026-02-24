@@ -1,8 +1,5 @@
 """
-app/core/config.py
-──────────────────
-Centralised, type-safe settings loaded from environment variables or .env file.
-Pydantic-settings v2 style.
+Centralised settings loaded from env vars / .env file (pydantic-settings v2).
 """
 
 from __future__ import annotations

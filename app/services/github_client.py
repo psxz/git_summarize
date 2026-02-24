@@ -1,14 +1,9 @@
 """
-app/services/github_client.py
-──────────────────────────────
 Async GitHub REST API client.
 
-Implements:
-  • Authenticated requests (PAT via Authorization header)
-  • X-GitHub-Api-Version header pinned to 2022-11-28
-  • Exponential backoff on 403/429 with Retry-After support (tenacity)
-  • Fetches: metadata, README, languages, file contents, file tree
-  • 100 MB / 1,000-file guard rails per the GitHub API docs
+Handles authenticated requests with a PAT, exponential backoff on
+rate limits (tenacity), and fetching repo metadata, READMEs, file
+contents, and directory listings. Pinned to API version 2022-11-28.
 """
 
 from __future__ import annotations

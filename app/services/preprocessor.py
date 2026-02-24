@@ -1,24 +1,12 @@
 """
-app/services/preprocessor.py
-──────────────────────────────
-Linguistic pre-processing pipeline.
+Text pre-processing pipeline for repository content.
 
-Steps:
-  1. Strip status badges (shields.io, img.shields.io, GitHub Actions badges)
-  2. Remove social/tracking pixels and icon image tags
-  3. Collapse redundant external links
-  4. Remove HTML comments and raw <script>/<style> blocks
-  5. Collapse excessive whitespace
-  6. Estimate token count (tiktoken)
-  7a. Chunk documentation using recursive character splitting (Markdown-aware)
-  7b. Chunk SOURCE CODE using ChunkHound cAST algorithm (Tree-sitter, AST-aware)
-      – preserves function/class/module boundaries
-      – 4.3 point gain on RepoEval retrieval (CMU / Augment Code research)
-      – supports 29 languages: Python, JS, TS, Go, Rust, Java, C/C++, and more
-      – falls back to recursive splitter if ChunkHound is not installed
+Strips markdown badges, social pixels, tracking links, and HTML noise.
+Then chunks the cleaned text — prose docs go through a recursive
+markdown-aware splitter; source code uses ChunkHound's cAST algorithm
+(tree-sitter based) to split on function/class boundaries.
 
-Follows the research document's recommendation to maximise information density
-before sending content to the LLM.
+Also handles token counting (tiktoken) and file-tree rendering.
 """
 
 from __future__ import annotations

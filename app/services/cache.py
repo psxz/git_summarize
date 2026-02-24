@@ -1,13 +1,10 @@
 """
-app/services/cache.py
-──────────────────────
 Redis-backed response cache with in-memory fallback.
 
-Cache key: SHA-256 hash of (repo_url + provider + model + strategy).
-TTL: configurable via CACHE_TTL_SECONDS (default 1 hour).
-
-If REDIS_URL is not set, falls back to an in-process LRU dict
-(not suitable for multi-worker production, but useful for dev/testing).
+Cache key is a SHA-256 hash of (repo_url + provider + model + strategy).
+TTL configurable via CACHE_TTL_SECONDS (default 1h). If REDIS_URL isn't
+set, falls back to a simple in-process dict (fine for dev, not for
+multi-worker production).
 """
 
 from __future__ import annotations
