@@ -72,17 +72,15 @@ def get_llm(
 
     # Model resolution order:
     #  1. Explicit argument to get_llm()
-    #  2. DEFAULT_LLM_MODEL env var (only if it differs from the openai default,
-    #     to avoid using "gpt-4o-mini" when the provider is nebius)
+    #  2. DEFAULT_LLM_MODEL env var
     #  3. Provider-specific default from _PROVIDER_DEFAULTS
     env_model = settings.default_llm_model
     if model:
         chosen_model = model
-    elif env_model and env_model != "gpt-4o-mini":
-        # User has set a custom default — respect it regardless of provider
+    elif env_model:
         chosen_model = env_model
     else:
-        chosen_model = _PROVIDER_DEFAULTS.get(chosen_provider, env_model)
+        chosen_model = _PROVIDER_DEFAULTS.get(chosen_provider, "MiniMaxAI/MiniMax-M2.1")
 
     temperature = settings.llm_temperature
     max_tokens = settings.llm_max_tokens

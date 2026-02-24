@@ -40,7 +40,7 @@ services:
       - key: DEFAULT_LLM_PROVIDER
         value: nebius
       - key: DEFAULT_LLM_MODEL
-        value: MiniMax-M2.1
+        value: MiniMaxAI/MiniMax-M2.1
       - key: LLM_TEMPERATURE
         value: "0.2"
       - key: LLM_MAX_TOKENS
