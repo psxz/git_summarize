@@ -48,6 +48,7 @@ mnt/user-data/
 # ── API testing artifacts ─────────────────────────────────────
 scripts/_req.json
 scripts/_*.json
+*_summary.json
 
 # ── Misc ──────────────────────────────────────────────────────
 *.log
