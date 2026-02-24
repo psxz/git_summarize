@@ -1,0 +1,51 @@
+# ── Python ────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.egg-info/
+*.egg
+dist/
+build/
+*.whl
+
+# ── Virtual environments ──────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── Environment / secrets ────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── uv ────────────────────────────────────────────────────────
+# Keep uv.lock committed for reproducible builds
+# .python-version is also committed (pins Python 3.12)
+
+# ── IDE / editor ──────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── Testing / coverage ───────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# ── Ruff ──────────────────────────────────────────────────────
+.ruff_cache/
+
+# ── Docker ────────────────────────────────────────────────────
+# Ignore mounted data volumes
+mnt/user-data/
+
+# ── Misc ──────────────────────────────────────────────────────
+*.log
+*.bak
+*.tmp

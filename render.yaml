@@ -1,0 +1,123 @@
+# render.yaml — Render.com blueprint
+# Deploy with: render blueprint apply
+#
+# uv is pre-installed on Render's Python runtime (as of 2025).
+# We use `uv sync --frozen` so Render always installs from the committed
+# uv.lock — no surprise dependency drift between deploys.
+
+services:
+  # ── API Server ────────────────────────────────────────────────────────
+  - type: web
+    name: github-summarizer-api
+    runtime: python
+    # uv reads .python-version automatically — pins to 3.12
+    buildCommand: |
+      pip install uv --quiet
+      uv sync --frozen --no-dev --compile-bytecode
+    startCommand: uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    plan: starter           # minimum for 100-min HTTP timeout (LLM tasks need it)
+    healthCheckPath: /api/v1/health
+    envVars:
+      # ── GitHub ──────────────────────────────────────────────
+      - key: GITHUB_TOKEN
+        sync: false         # set in Render dashboard → secrets
+
+      # ── LLM Providers (set the one matching DEFAULT_LLM_PROVIDER) ──
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: NEBIUS_API_KEY
+        sync: false
+      - key: NEBIUS_API_BASE
+        value: https://api.studio.nebius.com/v1/
+
+      # ── LLM Configuration ──────────────────────────────────
+      - key: DEFAULT_LLM_PROVIDER
+        value: nebius
+      - key: DEFAULT_LLM_MODEL
+        value: MiniMax-M2.1
+      - key: LLM_TEMPERATURE
+        value: "0.2"
+      - key: LLM_MAX_TOKENS
+        value: "2048"
+
+      # ── Summarization ──────────────────────────────────────
+      - key: SUMMARIZATION_STRATEGY
+        value: map_reduce
+      - key: CHUNK_SIZE_TOKENS
+        value: "1500"
+      - key: CHUNK_OVERLAP_TOKENS
+        value: "150"
+
+      # ── Cache (auto-wired from Redis service below) ─────────
+      - key: REDIS_URL
+        fromService:
+          name: github-summarizer-redis
+          type: redis
+          property: connectionString
+      - key: CACHE_TTL_SECONDS
+        value: "3600"
+
+      # ── API Security ────────────────────────────────────────
+      - key: API_SECRET_KEY
+        sync: false         # set in Render dashboard → secrets
+      - key: LOGTO_ENDPOINT
+        sync: false
+      - key: LOGTO_API_RESOURCE
+        sync: false
+      - key: LOGTO_REQUIRED_SCOPES
+        sync: false
+      - key: LOGTO_GITHUB_TOKEN_CLAIM
+        value: github_access_token
+
+      # ── Observability ───────────────────────────────────────
+      - key: LANGCHAIN_API_KEY
+        sync: false
+      - key: LANGCHAIN_TRACING_V2
+        value: "false"
+      - key: LANGCHAIN_PROJECT
+        value: github-summarizer
+      - key: PHOENIX_COLLECTOR_ENDPOINT
+        # Points to the Phoenix private service below.
+        # Uses Render's internal DNS — no public exposure needed.
+        fromService:
+          name: github-summarizer-phoenix
+          type: pserv
+          envVarKey: PHOENIX_INTERNAL_URL
+      - key: LOG_LEVEL
+        value: INFO
+
+      # ── Runtime Limits ──────────────────────────────────────
+      - key: MAX_FILES_TO_SCAN
+        value: "20"
+      - key: MAX_FILE_SIZE_BYTES
+        value: "102400"
+      - key: MAX_TOTAL_TOKENS
+        value: "80000"
+
+  # ── Redis Cache ───────────────────────────────────────────────────────
+  - type: redis
+    name: github-summarizer-redis
+    plan: starter
+    maxmemoryPolicy: allkeys-lru
+
+  # ── Phoenix (LLM Observability) ───────────────────────────────────────
+  # Runs as a private service — only reachable from within the Render
+  # private network. The API sends OTLP traces to port 4317.
+  - type: pserv
+    name: github-summarizer-phoenix
+    runtime: docker
+    dockerfilePath: ./Dockerfile.phoenix
+    plan: starter
+    envVars:
+      - key: PHOENIX_WORKING_DIR
+        value: /data
+      - key: PHOENIX_INTERNAL_URL
+        value: http://localhost:4317
+    disk:
+      name: phoenix-data
+      mountPath: /data
+      sizeGB: 1

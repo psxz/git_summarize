@@ -1,0 +1,6 @@
+# Dockerfile.phoenix — Arize Phoenix for Render.com private service
+# Lightweight wrapper to run Phoenix with persistent storage.
+FROM arizephoenix/phoenix:latest
+
+ENV PHOENIX_WORKING_DIR=/data
+EXPOSE 6006 4317

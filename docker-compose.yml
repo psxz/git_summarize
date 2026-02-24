@@ -1,0 +1,95 @@
+# docker-compose.yml — local development with hot reload
+# Uses uv to run the server inside the project's managed venv.
+#
+# Usage:
+#   cp .env.example .env     # fill in your keys
+#   docker compose up        # starts api + redis + phoenix with live reload
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Use the builder stage for dev so we don't strip dev tools
+      target: builder
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount source for hot reload — only app/ to avoid polluting venv
+      - ./app:/app/app
+    environment:
+      # ── GitHub ──────────────────────────────────────────────
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      # ── LLM Providers ──────────────────────────────────────
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - NEBIUS_API_KEY=${NEBIUS_API_KEY:-}
+      - NEBIUS_API_BASE=${NEBIUS_API_BASE:-https://api.studio.nebius.com/v1/}
+      # ── LLM Configuration ──────────────────────────────────
+      - DEFAULT_LLM_PROVIDER=${DEFAULT_LLM_PROVIDER:-openai}
+      - DEFAULT_LLM_MODEL=${DEFAULT_LLM_MODEL:-gpt-4o-mini}
+      - LLM_TEMPERATURE=${LLM_TEMPERATURE:-0.2}
+      - LLM_MAX_TOKENS=${LLM_MAX_TOKENS:-2048}
+      # ── Summarization ──────────────────────────────────────
+      - SUMMARIZATION_STRATEGY=${SUMMARIZATION_STRATEGY:-map_reduce}
+      - CHUNK_SIZE_TOKENS=${CHUNK_SIZE_TOKENS:-1500}
+      - CHUNK_OVERLAP_TOKENS=${CHUNK_OVERLAP_TOKENS:-150}
+      # ── Cache ───────────────────────────────────────────────
+      - REDIS_URL=redis://redis:6379/0
+      - CACHE_TTL_SECONDS=${CACHE_TTL_SECONDS:-3600}
+      # ── API Security ────────────────────────────────────────
+      - API_SECRET_KEY=${API_SECRET_KEY:-}
+      - LOGTO_ENDPOINT=${LOGTO_ENDPOINT:-}
+      - LOGTO_API_RESOURCE=${LOGTO_API_RESOURCE:-}
+      - LOGTO_REQUIRED_SCOPES=${LOGTO_REQUIRED_SCOPES:-}
+      - LOGTO_GITHUB_TOKEN_CLAIM=${LOGTO_GITHUB_TOKEN_CLAIM:-github_access_token}
+      # ── Observability ───────────────────────────────────────
+      - LANGCHAIN_API_KEY=${LANGCHAIN_API_KEY:-}
+      - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2:-false}
+      - LANGCHAIN_PROJECT=${LANGCHAIN_PROJECT:-github-summarizer}
+      - PHOENIX_COLLECTOR_ENDPOINT=http://phoenix:4317
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      # ── Runtime Limits ──────────────────────────────────────
+      - MAX_FILES_TO_SCAN=${MAX_FILES_TO_SCAN:-20}
+      - MAX_FILE_SIZE_BYTES=${MAX_FILE_SIZE_BYTES:-102400}
+      - MAX_TOTAL_TOKENS=${MAX_TOTAL_TOKENS:-80000}
+    # uv run resolves the venv automatically from pyproject.toml
+    command: >
+      uv run uvicorn app.main:app
+        --host 0.0.0.0
+        --port 8000
+        --reload
+        --reload-dir app
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    ports:
+      - "6006:6006" # Phoenix UI
+      - "4317:4317" # OTLP/gRPC collector
+    environment:
+      - PHOENIX_WORKING_DIR=/data
+    volumes:
+      - phoenix-data:/data
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+  phoenix-data:
